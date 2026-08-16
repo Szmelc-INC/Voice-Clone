@@ -1,5 +1,12 @@
 # Voice-Clone
-Easy voice cloner implementation for [OmniVoice](https://github.com/k2-fsa/OmniVoice)
+> Easy voice cloner implementation for [OmniVoice](https://github.com/k2-fsa/OmniVoice)
+
+---
+
+# Contents
+- `cli.py` - Main CLI interface for OmniVoice
+- `whisper.py` & `whisper2.py` - Transcription with whisper model.
+- `voices/*` - Voices i cloned for OmniVoice
 
 ---
 
