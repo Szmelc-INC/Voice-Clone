@@ -16,7 +16,7 @@ export class Editor {
     this.wordsVersion = 0;
     this.saveTimer = null;
     this.watching = new Set();
-    this.generating = new Set();  // edit ids with a generation this tab is waiting for
+    this.generating = new Map();  // edit id -> generations this tab is waiting for
     this.bindUi();
     this.bindBus();
   }
@@ -179,6 +179,7 @@ export class Editor {
 
   editInspector(e) {
     const busy = S.busyEdits.has(e.id);
+    const queued = this.pendingFor(e.id);
     const take = activeTake(e);
     const idx = edits().indexOf(e) + 1;
     const out = [];
@@ -208,10 +209,10 @@ export class Editor {
     }
 
     // actions
-    const regen = h("button", { class: "btn primary", disabled: e.locked || busy, onclick: async () => {
+    const regen = h("button", { class: "btn primary", disabled: e.locked, title: "Queue another take (up to 10 jobs in the queue)", onclick: async () => {
       if (ta.value.trim() && ta.value.trim() !== e.text) await this.patchEdit(e.id, { text: ta.value.trim() }, false);
       this.regenerate(e.id);
-    } }, h("span", { html: icons.redo, style: { width: "16px", height: "16px", display: "inline-flex" } }), busy ? "Generating…" : "Regenerate");
+    } }, h("span", { html: icons.redo, style: { width: "16px", height: "16px", display: "inline-flex" } }), queued > 1 ? `Regenerate · ${queued} queued` : busy ? "Regenerate · 1 running" : "Regenerate");
     const lock = h("button", { class: `btn ${e.locked ? "warn" : "success"}`, disabled: !take, onclick: () => this.toggleLock(e) },
       h("span", { html: e.locked ? icons.unlock : icons.lock, style: { width: "16px", height: "16px", display: "inline-flex" } }), e.locked ? "Unlock" : "Lock take");
     const prev = h("button", { class: "btn", disabled: !take, onclick: () => this.previewEdit(e.id) },
@@ -286,24 +287,28 @@ export class Editor {
     } catch (err) { toast(err.message, "err"); }
   }
 
+  pendingFor(eid) { return this.generating.get(eid) || 0; }
+
+  // Generations are queued on the server (up to 10); several can be pending per edit.
   async afterGenerate(job, eid) {
+    this.generating.set(eid, this.pendingFor(eid) + 1);
     S.busyEdits.add(eid);
-    this.generating.add(eid);
     this.refreshAll();
+    let done = null;
     try {
-      const done = await this.track(job, "Generation");
-      this.generating.delete(eid);
-      S.busyEdits.delete(eid);
-      await this.reload();
-      await this.player.buffer(eid, done.result.id).catch(() => {});
-      this.timeline.dirty = true;
-      if (!this.player.playing) this.previewEdit(eid, done.result.id);
-      toast(`New take ready (${done.result.duration.toFixed(2)} s) - previewing`, "ok");
-    } catch {
-      this.generating.delete(eid);
-      S.busyEdits.delete(eid);
-      await this.reload();
-    }
+      done = await this.track(job, "Generation");
+    } catch { /* toast shown by track */ }
+    const left = this.pendingFor(eid) - 1;
+    if (left > 0) this.generating.set(eid, left);
+    else { this.generating.delete(eid); S.busyEdits.delete(eid); }
+    await this.reload();
+    if (!done) return;
+    await this.player.buffer(eid, done.result.id).catch(() => {});
+    this.timeline.dirty = true;
+    // only auto-preview the last take of a batch, so previews don't pile up
+    const auto = left <= 0 && !this.player.playing && !this.player.solo;
+    if (auto) this.previewEdit(eid, done.result.id);
+    toast(`New take ready (${done.result.duration.toFixed(2)} s)${auto ? " - previewing" : left > 0 ? ` · ${left} more queued` : ""}`, "ok");
   }
 
   async toggleLock(e) {

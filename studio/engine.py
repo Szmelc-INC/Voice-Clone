@@ -25,6 +25,13 @@ log = logging.getLogger("studio.engine")
 
 # --------------------------------------------------------------------------- jobs
 
+MAX_QUEUE = 10  # queued + running model jobs accepted at once
+
+
+class QueueFull(RuntimeError):
+    pass
+
+
 class Jobs:
     def __init__(self) -> None:
         self.jobs: dict[str, dict] = {}
@@ -43,6 +50,8 @@ class Jobs:
             "created": store.now(), "started": None, "finished": None,
         }
         with self.lock:
+            if lane == "gpu" and kind != "preload" and self.pending("gpu") >= MAX_QUEUE:
+                raise QueueFull(f"The queue is full ({MAX_QUEUE} jobs). Wait for some to finish.")
             self.jobs[job["id"]] = job
             # Keep memory bounded: drop the oldest finished jobs.
             done = [j for j in self.jobs.values() if j["status"] in ("done", "error")]
@@ -63,12 +72,24 @@ class Jobs:
                 job["status"], job["error"] = "error", str(exc) or type(exc).__name__
             job["finished"] = store.now()
 
+    def pending(self, lane: str) -> int:
+        return sum(1 for j in self.jobs.values()
+                   if j["lane"] == lane and j["status"] in ("queued", "running"))
+
+    def _annotate(self, job: dict) -> dict:
+        """Add the 1-based queue position to a waiting job."""
+        if job["status"] == "queued":
+            ahead = [j for j in self.jobs.values() if j["lane"] == job["lane"]
+                     and j["status"] in ("queued", "running") and j["created"] < job["created"]]
+            return {**job, "position": len(ahead) + 1}
+        return job
+
     def get(self, jid: str) -> dict:
-        return self.jobs[jid]
+        return self._annotate(self.jobs[jid])
 
     def recent(self) -> list[dict]:
         cutoff = time.time() - 600
-        return sorted((j for j in self.jobs.values()
+        return sorted((self._annotate(j) for j in self.jobs.values()
                        if j["status"] in ("queued", "running") or (j["finished"] or 0) > cutoff),
                       key=lambda j: j["created"])
 

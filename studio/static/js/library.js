@@ -114,18 +114,18 @@ export function bindVoiceForms() {
   drop.addEventListener("drop", e => { e.preventDefault(); e.stopPropagation(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
   form.addEventListener("submit", async e => {
     e.preventDefault();
-    const btn = form.querySelector("button");
-    btn.disabled = true;
+    const name = form.name.value;
+    const data = new FormData(form);
+    // Clear right away so the next voice can be queued while this one clones.
+    form.reset();
+    $("#voiceDropText").textContent = "Drop 3–10 s of clean speech";
     try {
-      const job = await api.upload("/api/voices", new FormData(form));
-      toast(`Cloning “${form.name.value}”…`);
+      const job = await api.upload("/api/voices", data);
+      toast(`Cloning “${name}”…`);
       await waitJob(job);
-      toast(`Voice “${form.name.value}” saved`, "ok");
-      form.reset();
-      $("#voiceDropText").textContent = "Drop 3–10 s of clean speech";
+      toast(`Voice “${name}” saved`, "ok");
       renderVoices();
     } catch (err) { toast(err.message, "err"); }
-    btn.disabled = false;
   });
 
   const tts = $("#ttsForm");
@@ -142,20 +142,21 @@ export function bindVoiceForms() {
       voice: voice && voice !== "__design" ? voice : null,
       instruct: voice === "__design" ? fd.get("instruct") || null : null,
     };
-    const btn = tts.querySelector("button");
-    btn.disabled = true;
-    const res = $("#ttsResult");
-    res.innerHTML = '<span class="spinner"></span> <span class="dim">Generating…</span>';
+    // Each submit queues its own job (the server takes up to 10); results stack up, newest on top.
+    const row = h("div", { class: "tts-row" }, h("span", { class: "spinner small" }), " ",
+      h("span", { class: "dim" }, `“${body.text.slice(0, 40)}${body.text.length > 40 ? "…" : ""}” · queued`));
+    $("#ttsResult").prepend(row);
     try {
       const job = await api.post("/api/tts", body);
-      const done = await waitJob(job, j => { if (j.progress) res.querySelector(".dim").textContent = j.progress + "…"; });
+      const done = await waitJob(job, j => {
+        row.querySelector(".dim").textContent = j.status === "queued" && j.position
+          ? `#${j.position} in queue` : `${j.progress || "Generating"}…`;
+      });
       const url = `/api/outputs/${encodeURIComponent(done.result.file)}`;
-      res.innerHTML = "";
       const audio = h("audio", { controls: true, src: url, style: { width: "100%" } });
-      res.append(audio, h("div", { class: "dim", style: { fontSize: "12px" } }, `${done.result.file} · ${done.result.seconds} s · seed ${done.result.seed}`));
-      audio.play().catch(() => {});
-    } catch (err) { res.innerHTML = ""; toast(err.message, "err"); }
-    btn.disabled = false;
+      row.replaceChildren(audio, h("div", { class: "dim", style: { fontSize: "12px" } }, `${done.result.file} · ${done.result.seconds} s · seed ${done.result.seed}`));
+      if (![...document.querySelectorAll("#ttsResult audio")].some(a => !a.paused)) audio.play().catch(() => {});
+    } catch (err) { row.remove(); toast(err.message, "err"); }
   });
 }
 

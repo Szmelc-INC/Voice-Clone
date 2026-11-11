@@ -56,7 +56,7 @@ async function pollStatus() {
     }
     lastJobs = new Map(S.status.jobs.map(j => [j.id, j.status]));
     const busy = new Set(S.status.jobs.filter(j => j.kind === "generate" && ["queued", "running"].includes(j.status) && j.project === S.project?.id).map(j => j.meta.edit));
-    for (const id of editor.generating) busy.add(id);
+    for (const id of editor.generating.keys()) busy.add(id);
     const changed = busy.size !== S.busyEdits.size || [...busy].some(x => !S.busyEdits.has(x));
     if (changed && S.project) {
       S.busyEdits = busy;
@@ -86,12 +86,14 @@ function renderJobs() {
   $("#jobsSpin").classList.toggle("hidden", !active.length);
   $("#jobsBtn").classList.toggle("busy", !!active.length);
   const running = active.find(j => j.status === "running");
-  $("#jobsCount").textContent = active.length ? `${running ? running.progress || running.label : "Queued"}${active.length > 1 ? ` (+${active.length - 1})` : ""}` : "Jobs";
+  const queued = active.filter(j => j.status === "queued").length;
+  $("#jobsCount").textContent = active.length
+    ? `${running ? running.progress || running.label : "Queued"}${queued ? ` · ${queued} queued` : ""}` : "Jobs";
   const pop = $("#jobsPop");
   pop.innerHTML = jobs.length ? "" : '<div class="job"><span></span><span class="sub">No recent jobs</span></div>';
   for (const j of jobs.slice().reverse()) {
     const st = j.status === "running" ? '<span class="spinner small"></span>' : j.status === "done" ? '<span class="ok">✓</span>' : j.status === "error" ? "⚠" : "…";
-    pop.append(h("div", { class: `job ${j.status}`, html: `<span class="st">${st}</span><span class="lbl">${esc(j.label)}</span><span class="sub">${esc(j.status === "error" ? j.error : j.progress || j.status)}</span>` }));
+    pop.append(h("div", { class: `job ${j.status}`, html: `<span class="st">${st}</span><span class="lbl">${esc(j.label)}</span><span class="sub">${esc(j.status === "error" ? j.error : j.status === "queued" && j.position ? `#${j.position} in queue` : j.progress || j.status)}</span>` }));
   }
 }
 

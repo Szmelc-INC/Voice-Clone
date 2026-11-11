@@ -43,6 +43,9 @@ want, then render. Meme edits in seconds.
   **in context** (server-mixed with the same mixer as the final render), regenerate, or 🔒 lock it.
   Each take is checked with Whisper, so the inspector shows what was actually said
   (`✓ heard: …` / `⚠ heard: …`).
+- Nothing blocks while the GPU works: Regenerate, Edit & Generate, Quick TTS and voice clones
+  go into a queue of up to **10 jobs** and run one after another (the Jobs menu shows each
+  job's place in the queue).
 - Live A/B: with **Edits** on, playback ducks the original and plays the takes in place.
 - **Render**: locked takes only, or everything; the video stream is copied without re-encoding
   and only the audio track is replaced. SRT export of the corrected transcript.

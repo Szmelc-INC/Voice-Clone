@@ -357,7 +357,10 @@ details.adv[open] summary { margin-bottom: 10px; }
 .lib-grid .cards { padding-right: 0; }
 .side-stack { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 0; }
 .form { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-.drop-mini { border: 1.5px dashed var(--line-2); border-radius: 10px; padding: 18px; text-align: center; color: var(--dim); cursor: pointer; font-size: 13px; }
+#ttsResult { display: flex; flex-direction: column; gap: 10px; }
+.tts-row { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.tts-row:has(.spinner) { flex-direction: row; align-items: center; gap: 6px; }
+.drop-mini {border: 1.5px dashed var(--line-2); border-radius: 10px; padding: 18px; text-align: center; color: var(--dim); cursor: pointer; font-size: 13px; }
 .drop-mini:hover, .drop-mini.over { border-color: var(--accent); color: var(--text); }
 .output-list { padding: 0 32px 32px; display: flex; flex-direction: column; gap: 8px; }
 .out-row { display: grid; grid-template-columns: 36px 1fr minmax(240px, 380px) auto; gap: 14px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; }

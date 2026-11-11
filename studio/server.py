@@ -6,13 +6,18 @@ from pathlib import Path
 from typing import Literal, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, PlainTextResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import __version__, config, engine, media, store
 
 app = FastAPI(title="OmniVoice Voice Edit Studio", version=__version__)
+
+
+@app.exception_handler(engine.QueueFull)
+def queue_full(request, exc):
+    return JSONResponse({"detail": str(exc)}, status_code=429)
 
 
 @app.middleware("http")
@@ -56,7 +61,8 @@ def _output_path(name: str) -> Path:
 @app.get("/api/status")
 def status():
     return {"version": __version__, "models": engine.models.status(),
-            "jobs": engine.jobs.recent(), "languages": config.LANGUAGES,
+            "jobs": engine.jobs.recent(), "max_queue": engine.MAX_QUEUE,
+            "languages": config.LANGUAGES,
             "paths": {"voices": str(config.VOICES_DIR), "outputs": str(config.OUTPUT_DIR),
                       "data": str(config.DATA_DIR)}}
 
