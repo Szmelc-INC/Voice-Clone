@@ -1,0 +1,17 @@
+# Studio runtime data (projects, media copies, takes)
+studio_data/
+outputs/
+.venv*/
+__pycache__/
+*.pyc
+
+# Media never belongs in the repo
+*.wav
+*.mp3
+*.mp4
+*.mkv
+*.mov
+*.webm
+*.ogg
+*.flac
+*.m4a

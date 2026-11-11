@@ -1,0 +1,12 @@
+# Voice Edit Studio dependencies (on top of torch/torchaudio and OmniVoice itself).
+# torch is deliberately not listed: use the build that matches your GPU (ROCm/CUDA).
+transformers>=5.3,<6
+huggingface-hub>=1.3,<2
+accelerate
+soundfile
+librosa
+pydub
+audioop-lts; python_version >= "3.13"
+fastapi
+uvicorn
+python-multipart

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OmniVoice Studio</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237c5cff'/%3E%3Cpath d='M7 16h2M11 11v10M15 7v18M19 11v10M23 14v4' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/studio.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/projects">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><path d="M7 16h2M11 11v10M15 7v18M19 11v10M23 14v4"/></svg>
+      </span>
+      <span class="brand-name">OmniVoice <b>Studio</b></span>
+    </a>
+    <nav class="tabs" id="tabs">
+      <a href="#/editor" data-view="editor">Editor</a>
+      <a href="#/projects" data-view="projects">Projects</a>
+      <a href="#/voices" data-view="voices">Voices</a>
+      <a href="#/outputs" data-view="outputs">Outputs</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="engine" id="engine" title="Model status"></div>
+      <div class="jobs-wrap">
+        <button class="jobs-btn" id="jobsBtn" title="Background jobs">
+          <span class="spinner small hidden" id="jobsSpin"></span><span id="jobsCount">Jobs</span>
+        </button>
+        <div class="jobs-pop hidden" id="jobsPop"></div>
+      </div>
+    </div>
+  </header>
+
+  <main id="views">
+    <!-- ========================= EDITOR ========================= -->
+    <section class="view" id="view-editor">
+      <div class="empty-editor" id="editorEmpty">
+        <div class="drop-hero" id="dropHero">
+          <div class="drop-icon">
+            <svg viewBox="0 0 48 48"><path d="M24 30V10m0 0-8 8m8-8 8 8M10 30v6a4 4 0 0 0 4 4h20a4 4 0 0 0 4-4v-6"/></svg>
+          </div>
+          <h1>Drop a video or audio file</h1>
+          <p>Transcribe it, select words, right-click <b>Edit &amp; Generate</b>, and the new words are spoken in the same voice, right in place.</p>
+          <div class="drop-actions">
+            <label class="btn primary">Choose file<input type="file" id="fileInput" accept="video/*,audio/*,.mkv,.flac,.opus" hidden></label>
+            <form class="path-form" id="pathForm">
+              <input type="text" id="pathInput" placeholder="…or a local path, e.g. ~/Videos/clip.mp4" spellcheck="false">
+              <button class="btn" type="submit">Open</button>
+            </form>
+          </div>
+        </div>
+        <div class="recent" id="recentProjects"></div>
+      </div>
+
+      <div class="editor hidden" id="editor">
+        <div class="editor-head">
+          <input class="project-name" id="projectName" spellcheck="false" title="Rename project">
+          <div class="head-meta" id="projectMeta"></div>
+          <div class="head-actions">
+            <select id="langSelect" title="Transcription and synthesis language"></select>
+            <button class="btn" id="btnTranscribeAll" title="Transcribe the whole file with Whisper">
+              <svg class="i" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Auto-transcribe all
+            </button>
+            <button class="btn" id="btnTranscribeRange" title="Transcribe only the selected range" disabled>Transcribe selection</button>
+            <button class="btn primary" id="btnRender" title="Mix locked edits and render the final file">
+              <svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>Render
+            </button>
+          </div>
+        </div>
+
+        <div class="editor-grid">
+          <div class="panel player-panel">
+            <div class="stage" id="stage">
+              <video id="media" playsinline preload="auto"></video>
+              <div class="audio-art hidden" id="audioArt">
+                <canvas id="audioViz"></canvas>
+              </div>
+              <div class="stage-badge hidden" id="editBadge">EDITED</div>
+            </div>
+            <div class="transport">
+              <button class="icon-btn" id="btnBack" title="Back 5 s (Shift+←)"><svg viewBox="0 0 24 24"><path d="M11 18 5 12l6-6M19 18l-6-6 6-6"/></svg></button>
+              <button class="icon-btn play" id="btnPlay" title="Play / pause (Space)">
+                <svg class="ico-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <svg class="ico-pause hidden" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+              </button>
+              <button class="icon-btn" id="btnFwd" title="Forward 5 s (Shift+→)"><svg viewBox="0 0 24 24"><path d="m13 6 6 6-6 6M5 6l6 6-6 6"/></svg></button>
+              <div class="timecode"><span id="tcNow">0:00.00</span><span class="dim"> / </span><span id="tcDur" class="dim">0:00.00</span></div>
+              <label class="ab-toggle" title="Hear generated edits during playback (A/B)">
+                <input type="checkbox" id="abToggle" checked><span class="sw"></span><span>Edits</span>
+              </label>
+              <div class="vol"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4zM16 9a4 4 0 0 1 0 6"/></svg><input type="range" id="volume" min="0" max="1" step="0.01" value="1"></div>
+            </div>
+          </div>
+
+          <div class="panel transcript-panel">
+            <div class="panel-head">
+              <h3>Transcript</h3>
+              <div class="panel-tools">
+                <input class="search" id="findInput" placeholder="Find…" spellcheck="false">
+                <label class="chk" title="Keep the current word in view"><input type="checkbox" id="followToggle" checked> Follow</label>
+                <a class="btn ghost small" id="srtLink" download>SRT</a>
+              </div>
+            </div>
+            <div class="transcript" id="transcript" tabindex="0"></div>
+            <div class="hint-bar" id="hintBar">Select words, right-click them and choose <b>Edit &amp; Generate</b>. Double-click a word to correct it.</div>
+          </div>
+
+          <div class="panel inspector" id="inspector"></div>
+        </div>
+
+        <div class="panel timeline-panel">
+          <div class="timeline-tools">
+            <div class="tl-legend">
+              <span><i class="sw-orig"></i>Original</span>
+              <span><i class="sw-draft"></i>Draft take</span>
+              <span><i class="sw-locked"></i>Locked</span>
+            </div>
+            <div class="tl-sel" id="tlSel"></div>
+            <div class="tl-zoom">
+              <button class="icon-btn small" id="zoomOut" title="Zoom out (-)"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+              <input type="range" id="zoomRange" min="0" max="1000" value="300">
+              <button class="icon-btn small" id="zoomIn" title="Zoom in (+)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+              <button class="btn ghost small" id="zoomFit">Fit</button>
+            </div>
+          </div>
+          <div class="timeline-wrap" id="timelineWrap">
+            <canvas id="timeline"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================== PROJECTS ======================== -->
+    <section class="view" id="view-projects">
+      <div class="page-head">
+        <div>
+          <h1>Projects</h1>
+          <p class="dim">Every imported video or audio file, with its transcript, edits and takes.</p>
+        </div>
+        <label class="btn primary">New from file<input type="file" id="fileInput2" accept="video/*,audio/*,.mkv,.flac,.opus" hidden></label>
+      </div>
+      <div class="cards" id="projectCards"></div>
+    </section>
+
+    <!-- ========================= VOICES ========================= -->
+    <section class="view" id="view-voices">
+      <div class="page-head">
+        <div>
+          <h1>Voices</h1>
+          <p class="dim">Cloned voice prompts (<code>.pt</code>) shared with <code>cli.py</code>. Use them for edits or quick TTS.</p>
+        </div>
+      </div>
+      <div class="lib-grid">
+        <div class="cards" id="voiceCards"></div>
+        <aside class="side-stack">
+          <form class="panel form" id="newVoiceForm">
+            <h3>Clone a new voice</h3>
+            <label class="drop-mini" id="voiceDrop">
+              <input type="file" name="file" accept="audio/*,video/*" hidden required>
+              <span id="voiceDropText">Drop 3–10 s of clean speech</span>
+            </label>
+            <input name="name" placeholder="Voice name" required pattern="[\w.\- ]+" spellcheck="false">
+            <textarea name="ref_text" rows="3" placeholder="Exact transcript (optional, Whisper fills it in)"></textarea>
+            <button class="btn primary" type="submit">Clone voice</button>
+          </form>
+          <form class="panel form" id="ttsForm">
+            <h3>Quick TTS</h3>
+            <select name="voice" id="ttsVoice"></select>
+            <input name="instruct" id="ttsInstruct" placeholder="Voice design, e.g. female, low pitch, british accent" class="hidden">
+            <textarea name="text" rows="4" placeholder="Text to speak…" required></textarea>
+            <div class="row">
+              <select name="language" id="ttsLang"></select>
+              <select name="num_step" title="Quality (diffusion steps)">
+                <option value="16">Fast · 16</option><option value="32" selected>Quality · 32</option><option value="48">Max · 48</option>
+              </select>
+            </div>
+            <label class="slider-row">Speed <input type="range" name="speed" min="0.6" max="1.6" step="0.05" value="1"><output>1.00×</output></label>
+            <input name="name" value="tts" placeholder="Output file name" spellcheck="false">
+            <button class="btn primary" type="submit">Generate</button>
+            <div id="ttsResult"></div>
+          </form>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ======================== OUTPUTS ========================= -->
+    <section class="view" id="view-outputs">
+      <div class="page-head">
+        <div>
+          <h1>Outputs</h1>
+          <p class="dim">Renders and TTS samples in <code id="outputsPath"></code></p>
+        </div>
+      </div>
+      <div class="output-list" id="outputList"></div>
+    </section>
+  </main>
+
+  <div class="ctx hidden" id="ctxMenu" role="menu"></div>
+  <div class="modal-back hidden" id="modalBack"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+  <div class="toasts" id="toasts"></div>
+  <div class="drop-overlay hidden" id="dropOverlay"><div>Drop to import</div></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
