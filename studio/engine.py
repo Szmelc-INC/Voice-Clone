@@ -291,7 +291,7 @@ def import_media(pid: str, src: Path) -> dict:
             sr = min(info["sample_rate"], config.MASTER_MAX_SR)
             channels = min(info["channels"], 2)
             job["progress"] = "Extracting audio"
-            media.extract_master(src, d / "master.wav", sr, channels)
+            media.extract_master(src, d / "master.wav", sr, channels, info["duration"])
             job["progress"] = "Computing waveform"
             (d / "peaks.bin").write_bytes(media.compute_peaks(d / "master.wav"))
             frames = sf.info(str(d / "master.wav")).frames

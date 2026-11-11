@@ -10,7 +10,8 @@ set -euo pipefail
 
 OMNI="${1:-.}"
 VENV="${2:-.venv-studio}"
-PY="${PYTHON:-python3}"
+# Absolute path: given a bare name, uv may pick its own managed Python instead.
+PY="$(command -v "${PYTHON:-python3}")"
 
 if [ ! -f "$OMNI/omnivoice/__init__.py" ]; then
   echo "No OmniVoice checkout at '$OMNI' (expected $OMNI/omnivoice/)." >&2

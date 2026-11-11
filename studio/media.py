@@ -53,9 +53,13 @@ def probe(path: Path) -> dict:
     }
 
 
-def extract_master(src: Path, dst: Path, sr: int, channels: int) -> None:
-    run(["ffmpeg", "-y", "-v", "error", "-i", str(src), "-vn", "-ac", str(channels),
-         "-ar", str(sr), "-c:a", "pcm_s16le", str(dst)])
+def extract_master(src: Path, dst: Path, sr: int, channels: int, duration: float) -> None:
+    """Decode the audio on the container clock: a late-starting audio stream is
+    padded at the front, a short one with silence at the end, so master time 0
+    and length match what the video player shows."""
+    run(["ffmpeg", "-y", "-v", "error", "-i", str(src), "-vn", "-map", "0:a:0",
+         "-af", "aresample=async=1:first_pts=0,apad", "-t", f"{duration:.6f}",
+         "-ac", str(channels), "-ar", str(sr), "-c:a", "pcm_s16le", str(dst)])
 
 
 def needs_proxy(src: Path, info: dict) -> bool:
@@ -244,5 +248,4 @@ def mux_video(video_src: Path, audio_wav: Path, dst: Path) -> None:
     acodec = ["-c:a", "libopus", "-b:a", "160k"] if dst.suffix == ".webm" \
         else ["-c:a", "aac", "-b:a", "192k"]
     run(["ffmpeg", "-y", "-v", "error", "-i", str(video_src), "-i", str(audio_wav),
-         "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", *acodec,
-         "-shortest", str(dst)])
+         "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", *acodec, str(dst)])

@@ -15,6 +15,15 @@ from . import __version__, config, engine, media, store
 app = FastAPI(title="OmniVoice Voice Edit Studio", version=__version__)
 
 
+@app.middleware("http")
+async def revalidate_ui(request, call_next):
+    """Make browsers revalidate the UI files so an update is never half-cached."""
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 def _project(pid: str) -> dict:
     try:
         return store.load(pid)

@@ -28,7 +28,14 @@ export class Timeline {
     this.hover = null;
     this.takePeaks = new Map();
     this.layout();
-    new ResizeObserver(() => { this.layout(); this.dirty = true; }).observe(canvas.parentElement);
+    new ResizeObserver(() => {
+      const wasFit = this.pps <= this.minPps() * 1.001;
+      this.layout();
+      // keep "fit" fitted, and never zoom out past the whole file
+      if (wasFit || this.pps < this.minPps()) this.pps = this.minPps();
+      this.clampScroll();
+      emit("zoom", this.zoomValue());
+    }).observe(canvas.parentElement);
     this.bind();
     const loop = () => { if (this.dirty || this.player.playing) this.draw(); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
@@ -97,6 +104,7 @@ export class Timeline {
     if (x < GUTTER + 20 || x > this.W - 40) { this.scroll = t - (this.trackW / this.pps) * 0.15; this.clampScroll(); }
   }
   setProject() {
+    this.layout();  // the editor may just have been unhidden
     this.takePeaks.clear();
     this.fit();
     this.pps = Math.min(MAX_PPS, Math.max(this.minPps(), this.duration > 60 ? this.trackW / 60 : this.minPps()));
